@@ -22,6 +22,7 @@ use super::DexVariant;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash)]
 pub struct UniswapV3Dex {
     pub factory_address: H160,
+    pub quoter_address: H160,
     pub creation_block: BlockNumber,
 }
 
@@ -31,9 +32,10 @@ pub const POOL_CREATED_EVENT_SIGNATURE: H256 = H256([
 ]);
 
 impl UniswapV3Dex {
-    pub fn new(factory_address: H160, creation_block: BlockNumber) -> UniswapV3Dex {
+    pub fn new(factory_address: H160, quoter_address: H160, creation_block: BlockNumber) -> UniswapV3Dex {
         UniswapV3Dex {
             factory_address,
+            quoter_address,
             creation_block,
         }
     }
@@ -52,7 +54,7 @@ impl UniswapV3Dex {
         Pool::new_from_address(pair_address, DexVariant::UniswapV3, middleware).await
     }
 
-    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log) -> Result<Pool, CFMMError<M>> {
+    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log, factory_address: H160, quoter_address: H160) -> Result<Pool, CFMMError<M>> {
         let tokens = ethers::abi::decode(&[ParamType::Uint(32), ParamType::Address], &log.data)?;
         let token_a = H160::from(log.topics[0]);
         let token_b = H160::from(log.topics[1]);
@@ -71,6 +73,8 @@ impl UniswapV3Dex {
             tick_spacing: 0,
             tick: 0,
             liquidity_net: 0,
+            factory_address,
+            quoter_address
         }))
     }
 
@@ -135,7 +139,7 @@ impl UniswapV3Dex {
 
                 //For each pair created log, create a new Pair type and add it to the pairs vec
                 for log in logs {
-                    let pool = self.new_empty_pool_from_event(log)?;
+                    let pool = self.new_empty_pool_from_event(log, self.factory_address, self.quoter_address)?;
                     pools.push(pool);
                 }
 

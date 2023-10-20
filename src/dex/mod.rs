@@ -29,6 +29,7 @@ pub enum Dex {
 impl Dex {
     pub fn new(
         factory_address: H160,
+        quoter_address: H160,
         dex_variant: DexVariant,
         creation_block: u64,
         fee: Option<u64>,
@@ -38,12 +39,14 @@ impl Dex {
         match dex_variant {
             DexVariant::UniswapV2 => Dex::UniswapV2(UniswapV2Dex::new(
                 factory_address,
+                quoter_address,
                 BlockNumber::Number(creation_block.into()),
                 fee,
             )),
 
             DexVariant::UniswapV3 => Dex::UniswapV3(UniswapV3Dex::new(
                 factory_address,
+                quoter_address,
                 BlockNumber::Number(creation_block.into()),
             )),
         }
@@ -53,6 +56,13 @@ impl Dex {
         match self {
             Dex::UniswapV2(uniswap_v2_dex) => uniswap_v2_dex.factory_address,
             Dex::UniswapV3(uniswap_v3_dex) => uniswap_v3_dex.factory_address,
+        }
+    }
+
+    pub fn quoter_address(&self) -> H160 {
+        match self {
+            Dex::UniswapV2(uniswap_v2_dex) => uniswap_v2_dex.quoter_address,
+            Dex::UniswapV3(uniswap_v3_dex) => uniswap_v3_dex.quoter_address,
         }
     }
 
@@ -119,18 +129,22 @@ impl Dex {
     ) -> Result<(), CFMMError<M>> {
         match self {
             Dex::UniswapV2(_) => {
-                let step = 127; //Max batch size for call
+                let step = 1; //Max batch size for call
                 for pools in pools.chunks_mut(step) {
                     request_throttle
                         .lock()
                         .expect("Error when acquiring request throttle mutex lock")
                         .increment_or_sleep(1);
 
-                    batch_requests::uniswap_v2::get_pool_data_batch_request(
+                    match batch_requests::uniswap_v2::get_pool_data_batch_request(
                         pools,
                         middleware.clone(),
                     )
-                    .await?;
+                    .await
+                    {
+                        Ok(_) => {},
+                        Err(error) => println!("{}", error),
+                    };
 
                     progress_bar.inc(step as u64);
                 }
@@ -159,10 +173,10 @@ impl Dex {
         Ok(())
     }
 
-    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log) -> Result<Pool, CFMMError<M>> {
+    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log, factory_address: H160, quoter_address: H160) -> Result<Pool, CFMMError<M>> {
         match self {
-            Dex::UniswapV2(uniswap_v2_dex) => uniswap_v2_dex.new_empty_pool_from_event(log),
-            Dex::UniswapV3(uniswap_v3_dex) => uniswap_v3_dex.new_empty_pool_from_event(log),
+            Dex::UniswapV2(uniswap_v2_dex) => uniswap_v2_dex.new_empty_pool_from_event(log, factory_address, quoter_address),
+            Dex::UniswapV3(uniswap_v3_dex) => uniswap_v3_dex.new_empty_pool_from_event(log, factory_address, quoter_address),
         }
     }
 
@@ -351,7 +365,7 @@ impl Dex {
 
             //For each pair created log, create a new Pair type and add it to the pairs vec
             for log in logs {
-                let pool = self.new_empty_pool_from_event(log)?;
+                let pool = self.new_empty_pool_from_event(log, self.factory_address(), self.quoter_address())?;
                 aggregated_pairs.push(pool);
             }
 
@@ -415,7 +429,7 @@ impl Dex {
 
             //For each pair created log, create a new Pair type and add it to the pairs vec
             for log in logs {
-                let pool = self.new_empty_pool_from_event(log)?;
+                let pool = self.new_empty_pool_from_event(log, self.factory_address(), self.quoter_address())?;
                 aggregated_pairs.push(pool);
             }
 

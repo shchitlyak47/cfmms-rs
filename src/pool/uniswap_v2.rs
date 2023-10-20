@@ -29,6 +29,8 @@ pub struct UniswapV2Pool {
     pub reserve_0: u128,
     pub reserve_1: u128,
     pub fee: u32,
+    pub factory_address: H160,
+    pub quoter_address: H160,
 }
 
 impl UniswapV2Pool {
@@ -42,6 +44,8 @@ impl UniswapV2Pool {
         reserve_0: u128,
         reserve_1: u128,
         fee: u32,
+        factory_address: H160,
+        quoter_address: H160,
     ) -> UniswapV2Pool {
         UniswapV2Pool {
             address,
@@ -52,6 +56,8 @@ impl UniswapV2Pool {
             reserve_0,
             reserve_1,
             fee,
+            factory_address,
+            quoter_address
         }
     }
 
@@ -69,6 +75,8 @@ impl UniswapV2Pool {
             reserve_0: 0,
             reserve_1: 0,
             fee: 300,
+            factory_address: H160::zero(),
+            quoter_address: H160::zero()
         };
 
         pool.get_pool_data(middleware.clone()).await?;
@@ -86,24 +94,6 @@ impl UniswapV2Pool {
         let tokens = ethers::abi::decode(&[ParamType::Address, ParamType::Uint(256)], &log.data)?;
         let pair_address = tokens[0].to_owned().into_address().unwrap();
         UniswapV2Pool::new_from_address(pair_address, middleware).await
-    }
-
-    pub fn new_empty_pool_from_event_log<M: Middleware>(log: Log) -> Result<Self, CFMMError<M>> {
-        let tokens = ethers::abi::decode(&[ParamType::Address, ParamType::Uint(256)], &log.data)?;
-        let token_a = H160::from(log.topics[0]);
-        let token_b = H160::from(log.topics[1]);
-        let address = tokens[0].to_owned().into_address().unwrap();
-
-        Ok(UniswapV2Pool {
-            address,
-            token_a,
-            token_b,
-            token_a_decimals: 0,
-            token_b_decimals: 0,
-            reserve_0: 0,
-            reserve_1: 0,
-            fee: 300,
-        })
     }
 
     pub fn fee(&self) -> u32 {
@@ -245,7 +235,7 @@ impl UniswapV2Pool {
             ],
             &sync_log.data,
         )
-        .expect("Could not get log data");
+            .expect("Could not get log data");
 
         (
             data[0]
@@ -370,8 +360,8 @@ mod tests {
             H160::from_str("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc").unwrap(),
             middleware.clone(),
         )
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         assert_eq!(
             pool.address,

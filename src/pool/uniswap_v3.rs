@@ -36,6 +36,8 @@ pub struct UniswapV3Pool {
     pub tick: i32,
     pub tick_spacing: i32,
     pub liquidity_net: i128,
+    pub factory_address: H160,
+    pub quoter_address: H160,
 }
 
 impl UniswapV3Pool {
@@ -52,6 +54,8 @@ impl UniswapV3Pool {
         tick: i32,
         tick_spacing: i32,
         liquidity_net: i128,
+        factory_address: H160,
+        quoter_address: H160,
     ) -> UniswapV3Pool {
         UniswapV3Pool {
             address,
@@ -65,6 +69,8 @@ impl UniswapV3Pool {
             tick,
             tick_spacing,
             liquidity_net,
+            factory_address,
+            quoter_address
         }
     }
 
@@ -85,6 +91,8 @@ impl UniswapV3Pool {
             tick_spacing: 0,
             fee: 0,
             liquidity_net: 0,
+            factory_address: H160::zero(),
+            quoter_address: H160::zero()
         };
 
         pool.get_pool_data(middleware.clone()).await?;
@@ -103,28 +111,6 @@ impl UniswapV3Pool {
         let tokens = ethers::abi::decode(&[ParamType::Uint(32), ParamType::Address], &log.data)?;
         let pair_address = tokens[1].to_owned().into_address().unwrap();
         UniswapV3Pool::new_from_address(pair_address, middleware).await
-    }
-
-    pub fn new_empty_pool_from_event_log<M: Middleware>(log: Log) -> Result<Self, CFMMError<M>> {
-        let tokens = ethers::abi::decode(&[ParamType::Uint(32), ParamType::Address], &log.data)?;
-        let token_a = H160::from(log.topics[0]);
-        let token_b = H160::from(log.topics[1]);
-        let fee = tokens[0].to_owned().into_uint().unwrap().as_u32();
-        let address = tokens[1].to_owned().into_address().unwrap();
-
-        Ok(UniswapV3Pool {
-            address,
-            token_a,
-            token_b,
-            token_a_decimals: 0,
-            token_b_decimals: 0,
-            fee,
-            liquidity: 0,
-            sqrt_price: U256::zero(),
-            tick_spacing: 0,
-            tick: 0,
-            liquidity_net: 0,
-        })
     }
 
     pub fn fee(&self) -> u32 {
@@ -860,6 +846,7 @@ mod test {
 
         let pool = UniswapV3Pool::new_from_address(
             H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             middleware.clone(),
         )
         .await
@@ -901,6 +888,7 @@ mod test {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
 
         let pool = UniswapV3Pool::new_from_address(
+            H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             middleware.clone(),
         )
@@ -944,6 +932,7 @@ mod test {
 
         let pool = UniswapV3Pool::new_from_address(
             H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
+            H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             middleware.clone(),
         )
         .await
@@ -985,6 +974,7 @@ mod test {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
 
         let pool = UniswapV3Pool::new_from_address(
+            H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             middleware.clone(),
         )
@@ -1030,6 +1020,7 @@ mod test {
         let middleware = Arc::new(Provider::<Http>::try_from(rpc_endpoint).unwrap());
 
         let pool = UniswapV3Pool::new_from_address(
+            H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             H160::from_str("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640").unwrap(),
             middleware.clone(),
         )

@@ -20,6 +20,7 @@ use super::DexVariant;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash)]
 pub struct UniswapV2Dex {
     pub factory_address: H160,
+    pub quoter_address: H160,
     pub creation_block: BlockNumber,
     pub fee: u64,
 }
@@ -30,9 +31,10 @@ pub const PAIR_CREATED_EVENT_SIGNATURE: H256 = H256([
 ]);
 
 impl UniswapV2Dex {
-    pub fn new(factory_address: H160, creation_block: BlockNumber, fee: u64) -> UniswapV2Dex {
+    pub fn new(factory_address: H160, quoter_address: H160, creation_block: BlockNumber, fee: u64) -> UniswapV2Dex {
         UniswapV2Dex {
             factory_address,
+            quoter_address,
             creation_block,
             fee,
         }
@@ -52,7 +54,7 @@ impl UniswapV2Dex {
         Pool::new_from_address(pair_address, DexVariant::UniswapV2, middleware).await
     }
 
-    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log) -> Result<Pool, CFMMError<M>> {
+    pub fn new_empty_pool_from_event<M: Middleware>(&self, log: Log, factory_address: H160, quoter_address: H160) -> Result<Pool, CFMMError<M>> {
         let tokens = ethers::abi::decode(&[ParamType::Address, ParamType::Uint(256)], &log.data)?;
         let token_a = H160::from(log.topics[0]);
         let token_b = H160::from(log.topics[1]);
@@ -67,6 +69,8 @@ impl UniswapV2Dex {
             reserve_0: 0,
             reserve_1: 0,
             fee: 300,
+            factory_address,
+            quoter_address
         }))
     }
 
@@ -124,6 +128,8 @@ impl UniswapV2Dex {
         for addr in pairs {
             let pool = UniswapV2Pool {
                 address: addr,
+                factory_address: self.factory_address,
+                quoter_address: self.quoter_address,
                 ..Default::default()
             };
 

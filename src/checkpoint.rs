@@ -67,7 +67,7 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
                 request_throttle.clone(),
                 middleware.clone(),
             )
-            .await,
+                .await,
         );
     }
 
@@ -81,7 +81,7 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
                 request_throttle.clone(),
                 middleware.clone(),
             )
-            .await,
+                .await,
         );
     }
 
@@ -96,7 +96,7 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
             multi_progress_bar,
             middleware.clone(),
         )
-        .await,
+            .await,
     );
 
     for handle in handles {
@@ -131,7 +131,7 @@ pub async fn batch_sync_pools_from_checkpoint<M: 'static + Middleware>(
     request_throttle: Arc<Mutex<RequestThrottle>>,
     middleware: Arc<M>,
 ) -> JoinHandle<Result<Vec<Pool>, CFMMError<M>>> {
-    let dex = Dex::new(H160::zero(), dex_variant, 0, None);
+    let dex = Dex::new(H160::zero(), H160::zero(), dex_variant, 0, None);
 
     //Spawn a new thread to get all pools and sync data for each dex
     tokio::spawn(async move {
@@ -240,7 +240,7 @@ pub async fn get_new_pools_from_range<M: 'static + Middleware>(
                 progress_bar.clone(),
                 middleware.clone(),
             )
-            .await?;
+                .await?;
 
             //Clean empty pools
             pools = sync::remove_empty_pools(pools);
@@ -315,7 +315,7 @@ pub async fn generate_checkpoint_with_throttle<M: 'static + Middleware>(
                 progress_bar.clone(),
                 async_provider.clone(),
             )
-            .await?;
+                .await?;
 
             progress_bar.finish_and_clear();
             progress_bar.set_message(format!(
@@ -371,7 +371,7 @@ pub fn deconstruct_checkpoint(checkpoint_path: &str) -> (Vec<Dex>, Vec<Pool>, Bl
             .expect("Error when reading in checkpoint json")
             .as_str(),
     )
-    .expect("Error when converting checkpoint file contents to serde_json::Value");
+        .expect("Error when converting checkpoint file contents to serde_json::Value");
 
     let block_number = checkpoint_json
         .get("block_number")
@@ -436,13 +436,22 @@ pub fn deconstruct_dex_from_checkpoint(dex_map: &Map<String, Value>) -> Dex {
             .as_str()
             .expect("Could not convert factory_address to str"),
     )
-    .expect("Could not convert checkpoint factory_address to H160.");
+        .expect("Could not convert checkpoint factory_address to H160.");
+
+    let quoter_address = H160::from_str(
+        dex_map
+            .get("quoter_address")
+            .expect("Checkpoint formatted incorrectly, could not get dex quoter_address.")
+            .as_str()
+            .expect("Could not convert quoter_address to str"),
+    )
+        .expect("Could not convert checkpoint quoter_address to H160.");
 
     let fee = dex_map
         .get("fee")
         .map(|fee| fee.as_u64().expect("Could not convert fee to u64"));
 
-    Dex::new(factory_address, dex_variant, block_number, fee)
+    Dex::new(factory_address, quoter_address, dex_variant, block_number, fee)
 }
 
 pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> {
@@ -479,7 +488,29 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
                             panic!("Could not convert pool address to str {:?}", pool_map)
                         }),
                 )
-                .expect("Could not convert token_a to H160");
+                    .expect("Could not convert token_a to H160");
+
+                let factory_address = H160::from_str(
+                    pool_map
+                        .get("factory_address")
+                        .unwrap_or_else(|| panic!("Could not get pool factory_address {:?}", pool_map))
+                        .as_str()
+                        .unwrap_or_else(|| {
+                            panic!("Could not convert pool factory_address to str {:?}", pool_map)
+                        }),
+                )
+                    .expect("Could not convert factory_address to H160");
+
+                let quoter_address = H160::from_str(
+                    pool_map
+                        .get("factory_address")
+                        .unwrap_or_else(|| panic!("Could not get pool quoter_address {:?}", pool_map))
+                        .as_str()
+                        .unwrap_or_else(|| {
+                            panic!("Could not convert pool quoter_address to str {:?}", pool_map)
+                        }),
+                )
+                    .expect("Could not convert quoter_address to H160");
 
                 let token_a = H160::from_str(
                     pool_map
@@ -490,7 +521,7 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
                             panic!("Could not convert token_a to str {:?}", pool_map)
                         }),
                 )
-                .expect("Could not convert token_a to H160");
+                    .expect("Could not convert token_a to H160");
 
                 let token_a_decimals = pool_map
                     .get("token_a_decimals")
@@ -508,7 +539,7 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
                             panic!("Could not convert token_b to str {:?}", pool_map)
                         }),
                 )
-                .expect("Could not convert token_b to H160");
+                    .expect("Could not convert token_b to H160");
 
                 let token_b_decimals = pool_map
                     .get("token_b_decimals")
@@ -534,6 +565,8 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
                             0,
                             0,
                             fee,
+                            factory_address,
+                            quoter_address,
                         )));
                     }
 
@@ -550,6 +583,8 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
                             0,
                             0,
                             0,
+                            factory_address,
+                            quoter_address,
                         )));
                     }
                 }
@@ -591,6 +626,11 @@ pub fn construct_checkpoint(
             format!("{:?}", dex.factory_address()).into(),
         );
 
+        dex_map.insert(
+            String::from("quoter_address"),
+            format!("{:?}", dex.quoter_address()).into(),
+        );
+
         dex_map.insert(String::from("block_number"), latest_block.into());
 
         match dex {
@@ -600,10 +640,7 @@ pub fn construct_checkpoint(
                     String::from("UniswapV2").into(),
                 );
 
-                dex_map.insert(
-                    String::from("fee"),
-                    format!("{:?}", uniswap_v2_dex.fee).into(),
-                );
+                dex_map.insert(String::from("fee"), uniswap_v2_dex.fee.into());
             }
 
             Dex::UniswapV3(_) => {
@@ -634,6 +671,16 @@ pub fn construct_checkpoint(
                 pool_map.insert(
                     String::from("address"),
                     format!("{:?}", uniswap_v2_pool.address).into(),
+                );
+
+                pool_map.insert(
+                    String::from("factory_address"),
+                    format!("{:?}", uniswap_v2_pool.factory_address).into(),
+                );
+
+                pool_map.insert(
+                    String::from("quoter_address"),
+                    format!("{:?}", uniswap_v2_pool.quoter_address).into(),
                 );
 
                 pool_map.insert(
@@ -673,6 +720,16 @@ pub fn construct_checkpoint(
                 );
 
                 pool_map.insert(
+                    String::from("factory_address"),
+                    format!("{:?}", uniswap_v3_pool.factory_address).into(),
+                );
+
+                pool_map.insert(
+                    String::from("quoter_address"),
+                    format!("{:?}", uniswap_v3_pool.quoter_address).into(),
+                );
+
+                pool_map.insert(
                     String::from("token_a"),
                     format!("{:?}", uniswap_v3_pool.token_a).into(),
                 );
@@ -705,5 +762,5 @@ pub fn construct_checkpoint(
         checkpoint_path,
         serde_json::to_string_pretty(&checkpoint).unwrap(),
     )
-    .unwrap();
+        .unwrap();
 }

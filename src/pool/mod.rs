@@ -68,23 +68,6 @@ impl Pool {
         }
     }
 
-    //Creates a new pool with all pool data populated from the pair address.
-    pub fn new_empty_pool_from_event_log<M: Middleware>(log: Log) -> Result<Self, CFMMError<M>> {
-        let event_signature = log.topics[0];
-
-        if event_signature == dex::uniswap_v2::PAIR_CREATED_EVENT_SIGNATURE {
-            Ok(Pool::UniswapV2(
-                UniswapV2Pool::new_empty_pool_from_event_log(log)?,
-            ))
-        } else if event_signature == dex::uniswap_v3::POOL_CREATED_EVENT_SIGNATURE {
-            Ok(Pool::UniswapV3(
-                UniswapV3Pool::new_empty_pool_from_event_log(log)?,
-            ))
-        } else {
-            Err(CFMMError::UnrecognizedPoolCreatedEventLog)
-        }
-    }
-
     pub async fn sync_pool<M: Middleware>(
         &mut self,
         middleware: Arc<M>,
