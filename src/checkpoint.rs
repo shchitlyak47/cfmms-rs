@@ -503,7 +503,7 @@ pub fn deconstruct_pools_from_checkpoint(pools_array: &Vec<Value>) -> Vec<Pool> 
 
                 let quoter_address = H160::from_str(
                     pool_map
-                        .get("factory_address")
+                        .get("quoter_address")
                         .unwrap_or_else(|| panic!("Could not get pool quoter_address {:?}", pool_map))
                         .as_str()
                         .unwrap_or_else(|| {
