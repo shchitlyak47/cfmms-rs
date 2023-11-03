@@ -114,7 +114,7 @@ impl Dex {
                     progress_bar,
                     middleware,
                 )
-                .await
+                    .await
             }
         }
     }
@@ -140,9 +140,9 @@ impl Dex {
                         pools,
                         middleware.clone(),
                     )
-                    .await
+                        .await
                     {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(error) => println!("{}", error),
                     };
 
@@ -151,18 +151,22 @@ impl Dex {
             }
 
             Dex::UniswapV3(_) => {
-                let step = 76; //Max batch size for call
+                let step = 1; //Max batch size for call
                 for pools in pools.chunks_mut(step) {
                     request_throttle
                         .lock()
                         .expect("Error when acquiring request throttle mutex lock")
                         .increment_or_sleep(1);
 
-                    batch_requests::uniswap_v3::get_pool_data_batch_request(
+                    match batch_requests::uniswap_v3::get_pool_data_batch_request(
                         pools,
                         middleware.clone(),
                     )
-                    .await?;
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(error) => println!("{}", error),
+                    };
 
                     progress_bar.inc(step as u64);
                 }
@@ -446,6 +450,7 @@ pub enum DexVariant {
     UniswapV2,
     UniswapV3,
 }
+
 impl DexVariant {
     pub fn pool_created_event_signature(&self) -> H256 {
         match self {
@@ -489,7 +494,7 @@ mod tests {
             Provider::<Http>::try_from(
                 env::var("ETHEREUM_MAINNET_ENDPOINT").expect("Could not initialize provider"),
             )
-            .unwrap(),
+                .unwrap(),
         );
 
         let pools = univ3_pool
