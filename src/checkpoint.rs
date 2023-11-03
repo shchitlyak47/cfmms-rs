@@ -58,32 +58,32 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
     let mut handles = vec![];
 
     //Sync all uniswap v2 pools from checkpoint
-    if !uinswap_v2_pools.is_empty() {
-        handles.push(
-            batch_sync_pools_from_checkpoint(
-                uinswap_v2_pools,
-                DexVariant::UniswapV2,
-                multi_progress_bar.add(ProgressBar::new(0)),
-                request_throttle.clone(),
-                middleware.clone(),
-            )
-                .await,
-        );
-    }
+    // if !uinswap_v2_pools.is_empty() {
+    //     handles.push(
+    //         batch_sync_pools_from_checkpoint(
+    //             uinswap_v2_pools,
+    //             DexVariant::UniswapV2,
+    //             multi_progress_bar.add(ProgressBar::new(0)),
+    //             request_throttle.clone(),
+    //             middleware.clone(),
+    //         )
+    //             .await,
+    //     );
+    // }
 
     //Sync all uniswap v3 pools from checkpoint
-    if !uniswap_v3_pools.is_empty() {
-        handles.push(
-            batch_sync_pools_from_checkpoint(
-                uniswap_v3_pools,
-                DexVariant::UniswapV3,
-                multi_progress_bar.add(ProgressBar::new(0)),
-                request_throttle.clone(),
-                middleware.clone(),
-            )
-                .await,
-        );
-    }
+    // if !uniswap_v3_pools.is_empty() {
+    //     handles.push(
+    //         batch_sync_pools_from_checkpoint(
+    //             uniswap_v3_pools,
+    //             DexVariant::UniswapV3,
+    //             multi_progress_bar.add(ProgressBar::new(0)),
+    //             request_throttle.clone(),
+    //             middleware.clone(),
+    //         )
+    //             .await,
+    //     );
+    // }
 
     //Sync all pools from the since synced block
     handles.extend(
