@@ -49,12 +49,11 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
     let multi_progress_bar = MultiProgress::new();
 
     //Read in checkpoint
-    let (dexes, pools, checkpoint_block_number) = deconstruct_checkpoint(path_to_checkpoint);
+    let (dexes, mut pools, checkpoint_block_number) = deconstruct_checkpoint(path_to_checkpoint);
 
     //Sort all of the pools from the checkpoint into uniswapv2 and uniswapv3 pools so we can sync them concurrently
-    let (uinswap_v2_pools, uniswap_v3_pools) = sort_pool_variants(pools);
+    // let (uinswap_v2_pools, uniswap_v3_pools) = sort_pool_variants(pools);
 
-    let mut aggregated_pools = vec![];
     let mut handles = vec![];
 
     //Sync all uniswap v2 pools from checkpoint
@@ -101,7 +100,7 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
 
     for handle in handles {
         match handle.await {
-            Ok(sync_result) => aggregated_pools.extend(sync_result?),
+            Ok(sync_result) => pools.extend(sync_result?),
             Err(err) => {
                 {
                     if err.is_panic() {
@@ -116,12 +115,12 @@ pub async fn sync_pools_from_checkpoint_with_throttle<M: 'static + Middleware>(
     //update the sync checkpoint
     construct_checkpoint(
         dexes.clone(),
-        &aggregated_pools,
+        &pools,
         current_block.as_u64(),
         path_to_checkpoint,
     );
 
-    Ok((dexes, aggregated_pools))
+    Ok((dexes, pools))
 }
 
 pub async fn batch_sync_pools_from_checkpoint<M: 'static + Middleware>(
