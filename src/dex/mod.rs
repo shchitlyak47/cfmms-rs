@@ -350,7 +350,7 @@ impl Dex {
 
             //Get pair created event logs within the block range
             let to_block = from_block + step as u64;
-
+            
             //Update the throttle
             request_throttle
                 .lock()
@@ -362,7 +362,7 @@ impl Dex {
                     &Filter::new()
                         .topic0(ValueOrArray::Value(self.pool_created_event_signature()))
                         .address(self.factory_address())
-                        .from_block(BlockNumber::Number(U64([from_block])))
+                        .from_block(BlockNumber::Number(U64([from_block - 1])))
                         .to_block(BlockNumber::Number(U64([to_block]))),
                 )
                 .await
