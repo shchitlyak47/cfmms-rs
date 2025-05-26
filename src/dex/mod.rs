@@ -413,7 +413,7 @@ impl Dex {
             let progress_bar = progress_bar.clone();
 
             //Get pair created event logs within the block range
-            let next_to_block = from_block + step as u64;
+            let mut next_to_block = from_block + step as u64;
             if next_to_block > to_block {
                 next_to_block = to_block;
             }
