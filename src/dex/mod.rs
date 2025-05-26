@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use log::{error, info};
 
 use ethers::{
     providers::Middleware,
