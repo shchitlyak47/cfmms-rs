@@ -420,6 +420,8 @@ impl Dex {
                 .expect("Error when acquiring request throttle mutex lock")
                 .increment_or_sleep(1);
 
+            info!("from_block: {:?}, to_block: {:?}",from_block, to_block);
+            
             let logs = provider
                 .get_logs(
                     &Filter::new()
