@@ -413,7 +413,10 @@ impl Dex {
             let progress_bar = progress_bar.clone();
 
             //Get pair created event logs within the block range
-            let to_block = from_block + step as u64;
+            let next_to_block = from_block + step as u64;
+            if next_to_block > to_block {
+                next_to_block = to_block;
+            }
 
             //Update the throttle
             request_throttle
@@ -427,7 +430,7 @@ impl Dex {
                         .topic0(ValueOrArray::Value(self.pool_created_event_signature()))
                         .address(self.factory_address())
                         .from_block(BlockNumber::Number(U64([from_block])))
-                        .to_block(BlockNumber::Number(U64([to_block]))),
+                        .to_block(BlockNumber::Number(U64([next_to_block]))),
                 )
                 .await
                 .map_err(CFMMError::MiddlewareError)?;
